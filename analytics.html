@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Doss-Market Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--green:#1e6f3c;--gl:#2d9051;--gp:#e8f5ec;--amber:#e07b1a;--cream:#fdfaf4;--dark:#141a14;--text:#2a3328;--muted:#6b7c6e;--border:#d4e6d8;--red:#d93025;--blue:#1a73e8;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:#f0f4f0;color:var(--text);}
+header{background:linear-gradient(135deg,#1a5c32,#2d9051);padding:18px 5%;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+header h1{font-family:'Playfair Display',serif;font-size:20px;color:#fff;font-weight:700;}
+header p{font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;}
+.hright{display:flex;gap:8px;align-items:center;}
+.period-btn{padding:6px 14px;border-radius:16px;border:1.5px solid rgba(255,255,255,.4);background:transparent;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;transition:all .2s;}
+.period-btn.active{background:#fff;color:var(--green);}
+.back-btn{padding:7px 16px;border-radius:16px;border:1.5px solid rgba(255,255,255,.4);background:transparent;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-block;}
+.main{padding:20px 4%;max-width:1100px;margin:0 auto;}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;}
+.stat-card{background:#fff;border-radius:14px;padding:16px;border:1px solid var(--border);position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.stat-card.green::before{background:var(--green);}
+.stat-card.amber::before{background:var(--amber);}
+.stat-card.blue::before{background:var(--blue);}
+.stat-card.red::before{background:var(--red);}
+.stat-icon{font-size:20px;margin-bottom:8px;}
+.stat-num{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--dark);}
+.stat-label{font-size:11px;color:var(--muted);margin-top:3px;}
+.stat-change{font-size:11px;margin-top:4px;font-weight:500;}
+.stat-change.up{color:var(--green);}
+.stat-change.down{color:var(--red);}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+.chart-card{background:#fff;border-radius:14px;padding:18px;border:1px solid var(--border);}
+.chart-card.full{grid-column:1/-1;}
+.chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.chart-head h3{font-size:14px;font-weight:500;color:var(--dark);}
+.chart-wrap{position:relative;height:200px;}
+.stores-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-bottom:20px;}
+.store-card{background:#fff;border-radius:14px;padding:16px;border:1px solid var(--border);}
+.store-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.store-icon{width:38px;height:38px;border-radius:10px;background:var(--gp);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.store-name{font-size:14px;font-weight:500;color:var(--dark);}
+.store-cat{font-size:11px;color:var(--muted);}
+.store-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.ss{text-align:center;background:var(--cream);border-radius:8px;padding:8px 4px;}
+.ss .n{font-size:15px;font-weight:700;color:var(--green);}
+.ss .l{font-size:10px;color:var(--muted);margin-top:1px;}
+.recent-table{background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;margin-bottom:20px;}
+.rt-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.rt-head h3{font-size:14px;font-weight:500;color:var(--dark);}
+table{width:100%;border-collapse:collapse;}
+th{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;padding:10px 14px;text-align:left;background:#fafcfa;border-bottom:1px solid var(--border);}
+td{padding:10px 14px;border-bottom:1px solid #f0f5f0;font-size:13px;vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+.badge{display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:500;}
+.bg{background:#d4edda;color:#155724;}
+.by{background:#fff3cd;color:#856404;}
+.loading{text-align:center;padding:40px;color:var(--muted);font-size:14px;}
+.empty{text-align:center;padding:30px;color:var(--muted);font-size:13px;}
+.top-products{background:#fff;border-radius:14px;padding:18px;border:1px solid var(--border);margin-bottom:20px;}
+.top-products h3{font-size:14px;font-weight:500;color:var(--dark);margin-bottom:14px;}
+.prod-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:0.5px solid var(--border);}
+.prod-row:last-child{border-bottom:none;}
+.prod-rank{width:22px;height:22px;border-radius:50%;background:var(--gp);color:var(--green);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.prod-name{flex:1;font-size:13px;color:var(--text);}
+.prod-count{font-size:13px;font-weight:500;color:var(--green);}
+.bar-wrap{flex:1;background:#f0f5f0;border-radius:4px;height:6px;margin:0 8px;}
+.bar-fill{height:6px;border-radius:4px;background:var(--green);}
+.refresh-btn{background:var(--green);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:inherit;}
+@media(max-width:600px){.charts-grid{grid-template-columns:1fr;}.charts-grid .chart-card.full{grid-column:1;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Doss-Market Analytics</h1>
+    <p id="last-updated">Loading data...</p>
+  </div>
+  <div class="hright">
+    <button class="period-btn active" onclick="setPeriod('day',this)">Today</button>
+    <button class="period-btn" onclick="setPeriod('month',this)">Month</button>
+    <button class="period-btn" onclick="setPeriod('year',this)">Year</button>
+    <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
+    <a class="back-btn" href="index.html">← Market</a>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- STAT CARDS -->
+  <div class="stats-grid">
+    <div class="stat-card green"><div class="stat-icon">👥</div><div class="stat-num" id="s-visitors">-</div><div class="stat-label">Total Visitors</div><div class="stat-change up" id="s-vis-change"></div></div>
+    <div class="stat-card amber"><div class="stat-icon">📦</div><div class="stat-num" id="s-orders">-</div><div class="stat-label">Total Orders</div><div class="stat-change up" id="s-ord-change"></div></div>
+    <div class="stat-card blue"><div class="stat-icon">💰</div><div class="stat-num" id="s-revenue">-</div><div class="stat-label">Total Revenue</div><div class="stat-change up" id="s-rev-change"></div></div>
+    <div class="stat-card red"><div class="stat-icon">🏪</div><div class="stat-num" id="s-stores">-</div><div class="stat-label">Active Stores</div></div>
+  </div>
+
+  <!-- CHARTS ROW -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-head"><h3>👥 Visitors</h3></div>
+      <div class="chart-wrap"><canvas id="visitors-chart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-head"><h3>💰 Revenue (GH₵)</h3></div>
+      <div class="chart-wrap"><canvas id="revenue-chart"></canvas></div>
+    </div>
+    <div class="chart-card full">
+      <div class="chart-head"><h3>📦 Orders over time</h3></div>
+      <div class="chart-wrap" style="height:180px;"><canvas id="orders-chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- TOP PRODUCTS -->
+  <div class="top-products">
+    <h3>🔥 Most ordered products</h3>
+    <div id="top-products-list"><div class="empty">No orders yet</div></div>
+  </div>
+
+  <!-- STORES BREAKDOWN -->
+  <h3 style="font-size:15px;font-weight:500;margin-bottom:12px;color:var(--dark);">🏪 Store breakdown</h3>
+  <div class="stores-grid" id="stores-grid"><div class="loading">Loading stores...</div></div>
+
+  <!-- RECENT ORDERS -->
+  <div class="recent-table">
+    <div class="rt-head"><h3>📋 Recent orders</h3></div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead><tr><th>Store</th><th>Items</th><th>Total</th><th>Date & Time</th></tr></thead>
+        <tbody id="orders-tbody"><tr><td colspan="4" class="loading">Loading orders...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SB_URL = 'https://dezpxgkiszyckvdngyxf.supabase.co';
+const SB_KEY = 'sb_publishable_C0YGBCnW61tcyK5LloT_yQ_Np5s4hBF';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+let currentPeriod = 'day';
+let visChart, revChart, ordChart;
+
+function setPeriod(p, btn) {
+  currentPeriod = p;
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadAll();
+}
+
+function getDateRange(period) {
+  const now = new Date();
+  let from;
+  if (period === 'day') {
+    from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  } else if (period === 'month') {
+    from = new Date(now.getFullYear(), now.getMonth(), 1);
+  } else {
+    from = new Date(now.getFullYear(), 0, 1);
+  }
+  return from.toISOString();
+}
+
+function getLabels(period, data, field) {
+  const now = new Date();
+  if (period === 'day') {
+    const hours = Array.from({length: 24}, (_, i) => `${i}:00`);
+    return hours;
+  } else if (period === 'month') {
+    const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    return Array.from({length: days}, (_, i) => `${i + 1}`);
+  } else {
+    return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  }
+}
+
+function groupData(data, field, period) {
+  const counts = {};
+  data.forEach(row => {
+    const d = new Date(row[field]);
+    let key;
+    if (period === 'day') key = d.getHours();
+    else if (period === 'month') key = d.getDate() - 1;
+    else key = d.getMonth();
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  const labels = getLabels(period);
+  const values = labels.map((_, i) => counts[i] || 0);
+  return { labels, values };
+}
+
+function groupRevenue(orders, period) {
+  const totals = {};
+  orders.forEach(row => {
+    const d = new Date(row.ordered_at);
+    let key;
+    if (period === 'day') key = d.getHours();
+    else if (period === 'month') key = d.getDate() - 1;
+    else key = d.getMonth();
+    totals[key] = (totals[key] || 0) + (parseFloat(row.total) || 0);
+  });
+  const labels = getLabels(period);
+  const values = labels.map((_, i) => Math.round((totals[i] || 0) * 100) / 100);
+  return { labels, values };
+}
+
+async function loadAll() {
+  document.getElementById('last-updated').textContent = 'Loading...';
+  const from = getDateRange(currentPeriod);
+
+  const [visRes, ordRes, storeRes] = await Promise.all([
+    sb.from('visitors').select('*').gte('visited_at', from),
+    sb.from('orders').select('*').gte('ordered_at', from),
+    sb.from('stores').select('*')
+  ]);
+
+  const visitors = visRes.data || [];
+  const orders = ordRes.data || [];
+  const stores = storeRes.data || [];
+
+  const totalRevenue = orders.reduce((s, o) => s + (parseFloat(o.total) || 0), 0);
+
+  document.getElementById('s-visitors').textContent = visitors.length.toLocaleString();
+  document.getElementById('s-orders').textContent = orders.length.toLocaleString();
+  document.getElementById('s-revenue').textContent = `GH₵${Math.round(totalRevenue).toLocaleString()}`;
+  document.getElementById('s-stores').textContent = stores.filter(s => s.status === 'Open' || s.status === 'open').length;
+  document.getElementById('last-updated').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+
+  renderVisitorsChart(visitors);
+  renderRevenueChart(orders);
+  renderOrdersChart(orders);
+  renderTopProducts(orders);
+  renderStores(stores, orders, visitors);
+  renderRecentOrders(orders);
+}
+
+function renderVisitorsChart(visitors) {
+  const { labels, values } = groupData(visitors, 'visited_at', currentPeriod);
+  const ctx = document.getElementById('visitors-chart').getContext('2d');
+  if (visChart) visChart.destroy();
+  visChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        borderColor: '#1e6f3c',
+        backgroundColor: 'rgba(30,111,60,0.08)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 2
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { maxTicksLimit: 8, font: { size: 10 } } }, y: { beginAtZero: true, ticks: { font: { size: 10 } } } } }
+  });
+}
+
+function renderRevenueChart(orders) {
+  const { labels, values } = groupRevenue(orders, currentPeriod);
+  const ctx = document.getElementById('revenue-chart').getContext('2d');
+  if (revChart) revChart.destroy();
+  revChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: 'rgba(224,123,26,0.7)',
+        borderColor: '#e07b1a',
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { maxTicksLimit: 8, font: { size: 10 } } }, y: { beginAtZero: true, ticks: { font: { size: 10 } } } } }
+  });
+}
+
+function renderOrdersChart(orders) {
+  const { labels, values } = groupData(orders, 'ordered_at', currentPeriod);
+  const ctx = document.getElementById('orders-chart').getContext('2d');
+  if (ordChart) ordChart.destroy();
+  ordChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        borderColor: '#1a73e8',
+        backgroundColor: 'rgba(26,115,232,0.08)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 2
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { maxTicksLimit: 10, font: { size: 10 } } }, y: { beginAtZero: true, ticks: { font: { size: 10 } } } } }
+  });
+}
+
+function renderTopProducts(orders) {
+  const el = document.getElementById('top-products-list');
+  const counts = {};
+  orders.forEach(o => {
+    if (o.items) {
+      const items = o.items.split(',').map(i => i.trim().replace(/^\*|\*$/g,'').split(' x')[0].trim());
+      items.forEach(item => { if (item) counts[item] = (counts[item] || 0) + 1; });
+    }
+  });
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  if (!sorted.length) { el.innerHTML = '<div class="empty">No orders yet — products will appear here when customers order</div>'; return; }
+  const max = sorted[0][1];
+  el.innerHTML = sorted.map(([name, count], i) => `
+    <div class="prod-row">
+      <div class="prod-rank">${i + 1}</div>
+      <div class="prod-name">${name}</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(count/max*100)}%"></div></div>
+      <div class="prod-count">${count} orders</div>
+    </div>`).join('');
+}
+
+function renderStores(stores, orders, visitors) {
+  const grid = document.getElementById('stores-grid');
+  if (!stores.length) { grid.innerHTML = '<div class="empty">No stores registered yet</div>'; return; }
+  grid.innerHTML = stores.map(s => {
+    const storeOrders = orders.filter(o => o.store_name === s.name);
+    const storeVisitors = visitors.filter(v => v.store_name === s.name);
+    const revenue = storeOrders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+    return `<div class="store-card">
+      <div class="store-head">
+        <div class="store-icon">${s.icon || '🏪'}</div>
+        <div><div class="store-name">${s.name}</div><div class="store-cat">${s.category || ''}</div></div>
+      </div>
+      <div class="store-stats">
+        <div class="ss"><div class="n">${storeVisitors.length}</div><div class="l">Visitors</div></div>
+        <div class="ss"><div class="n">${storeOrders.length}</div><div class="l">Orders</div></div>
+        <div class="ss"><div class="n">GH₵${Math.round(revenue)}</div><div class="l">Revenue</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderRecentOrders(orders) {
+  const tbody = document.getElementById('orders-tbody');
+  const recent = [...orders].sort((a, b) => new Date(b.ordered_at) - new Date(a.ordered_at)).slice(0, 20);
+  if (!recent.length) { tbody.innerHTML = '<tr><td colspan="4" class="empty">No orders yet</td></tr>'; return; }
+  tbody.innerHTML = recent.map(o => `<tr>
+    <td><strong>${o.store_name || 'Unknown'}</strong></td>
+    <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${o.items || '-'}</td>
+    <td style="color:var(--green);font-weight:500;">GH₵${parseFloat(o.total || 0).toFixed(2)}</td>
+    <td style="color:var(--muted);font-size:12px;">${new Date(o.ordered_at).toLocaleString()}</td>
+  </tr>`).join('');
+}
+
+// Track this page visit
+async function trackVisit() {
+  await sb.from('visitors').insert([{ store_name: 'Doss-Market', page: 'analytics' }]);
+}
+
+trackVisit();
+loadAll();
+setInterval(loadAll, 60000);
+</script>
+</body>
+</html>
